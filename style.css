@@ -1,0 +1,92 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #ffeef5;
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 700px;
+  margin: 40px auto;
+  background-color: #fff0f5;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 0 15px rgba(255, 192, 203, 0.3);
+}
+
+h1 {
+  text-align: center;
+  color: #ff69b4;
+  margin-bottom: 30px;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input, textarea {
+  padding: 10px;
+  border: 1px solid #ffb6c1;
+  border-radius: 8px;
+}
+
+button {
+  background-color: #ff69b4;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  background-color: #ff1493;
+}
+
+.memory-card {
+  background-color: #fff;
+  border: 2px solid #ffc0cb;
+  border-radius: 10px;
+  padding: 15px;
+  margin-top: 20px;
+  position: relative;
+}
+
+.memory-card img,
+.memory-card video {
+  max-width: 100%;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.memory-card h3 {
+  color: #ff69b4;
+  margin-bottom: 5px;
+}
+
+.memory-card p {
+  color: #444;
+  margin-top: 10px;
+}
+
+.memory-card .actions {
+  margin-top: 10px;
+}
+
+.actions button {
+  margin-right: 10px;
+  padding: 5px 10px;
+  font-size: 0.9em;
+  border: none;
+  border-radius: 6px;
+  background-color: #ffb6c1;
+  cursor: pointer;
+}
+
+.actions button:hover {
+  background-color: #ff69b4;
+  color: white;
+}
