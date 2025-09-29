@@ -1,90 +1,89 @@
-// 🌸 Kết nối tới server Render (sử dụng HTTPS)
-const API_URL = "https://kyniemdep.onrender.com"; // ⚠️ Đổi thành domain Render của bạn nếu khác
+// 📁 server.js
+// 🌸 Website Kỷ Niệm — Upload ảnh/video lưu vĩnh viễn bằng Cloudinary
 
-const form = document.getElementById("memoryForm");
-const memoriesContainer = document.getElementById("memories");
+const express = require("express");
+const multer = require("multer");
+const cors = require("cors");
+const path = require("path");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 
-// 🩷 Tải danh sách kỷ niệm khi mở trang
-async function loadMemories() {
-  try {
-    const res = await fetch(`${API_URL}/memories`);
-    const data = await res.json();
-    renderMemories(data);
-  } catch (error) {
-    console.error("❌ Không thể kết nối tới server:", error);
-    alert("⚠️ Server chưa chạy hoặc API_URL chưa đúng!");
-  }
-}
+const app = express();
 
-// 📤 Gửi kỷ niệm mới
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const file = document.getElementById("file").files[0];
-
-  if (!file) return alert("Vui lòng chọn ảnh hoặc video!");
-
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("description", description);
-  formData.append("file", file);
-
-  try {
-    const res = await fetch(`${API_URL}/upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error("Upload thất bại");
-    const newMemory = await res.json();
-    addMemoryToPage(newMemory);
-    form.reset();
-  } catch (error) {
-    console.error("❌ Lỗi upload:", error);
-    alert("⚠️ Không thể tải lên. Vui lòng thử lại.");
-  }
+// ⚙️ Cấu hình Cloudinary (lấy từ biến môi trường Render)
+// 👉 Trong Render > Environment Variables:
+// CLOUDINARY_CLOUD_NAME = dsziuf4qj
+// CLOUDINARY_API_KEY = 575455794538716
+// CLOUDINARY_API_SECRET = yyHqelslM9aYlrvrClYGDedzJAM
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// 🖼️ Hiển thị tất cả kỷ niệm
-function renderMemories(memories) {
-  memoriesContainer.innerHTML = "";
-  memories.forEach(addMemoryToPage);
-}
+// ⚙️ Cấu hình CORS cho tất cả thiết bị
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
 
-// 🧠 Thêm một kỷ niệm vào giao diện
-function addMemoryToPage(memory) {
-  const card = document.createElement("div");
-  card.className = "memory-card";
+// ⚙️ Đọc JSON và phục vụ file tĩnh (index.html, style.css, script.js)
+app.use(express.json());
+app.use(express.static(__dirname));
 
-  let mediaElement = "";
-  if (memory.fileType.startsWith("video")) {
-    mediaElement = `<video controls src="${API_URL}${memory.filePath}"></video>`;
-  } else {
-    mediaElement = `<img src="${API_URL}${memory.filePath}" alt="${memory.title}" />`;
-  }
+// 🌤️ Cấu hình lưu file trực tiếp lên Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => ({
+    folder: "kyniemdep", // thư mục Cloudinary
+    resource_type: "auto", // tự nhận ảnh hoặc video
+    public_id: Date.now() + "-" + file.originalname,
+  }),
+});
 
-  card.innerHTML = `
-    <h3>${memory.title}</h3>
-    ${mediaElement}
-    <p>${memory.description}</p>
-    <div class="actions">
-      <button onclick="deleteMemory(${memory.id})">Xoá</button>
-    </div>
-  `;
+const upload = multer({ storage });
 
-  memoriesContainer.appendChild(card);
-}
+// 💾 Bộ nhớ tạm để lưu danh sách kỷ niệm
+let memories = [];
 
-// 🗑️ Xoá kỷ niệm
-async function deleteMemory(id) {
-  try {
-    await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
-    loadMemories();
-  } catch (error) {
-    alert("❌ Không thể xoá. Thử lại sau!");
-  }
-}
+// 📤 API Upload ảnh/video
+app.post("/upload", upload.single("file"), (req, res) => {
+  const { title, description } = req.body;
 
-loadMemories();
+  const memory = {
+    id: Date.now(),
+    title,
+    description,
+    fileUrl: req.file.path, // ✅ link vĩnh viễn Cloudinary
+    fileType: req.file.mimetype,
+  };
+
+  memories.push(memory);
+  res.json(memory);
+});
+
+// 📋 API Lấy danh sách kỷ niệm
+app.get("/memories", (req, res) => {
+  res.json(memories);
+});
+
+// ❌ API Xoá kỷ niệm (trên danh sách, không xoá trên Cloudinary)
+app.delete("/memories/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  memories = memories.filter((m) => m.id !== id);
+  res.json({ message: "🗑️ Đã xoá kỷ niệm!" });
+});
+
+// 🏠 Khi người dùng truy cập trang chủ, trả về giao diện
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// 🚀 Khởi động server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server đang chạy tại cổng ${PORT}`));
