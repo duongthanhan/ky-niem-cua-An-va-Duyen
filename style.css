@@ -90,3 +90,15 @@ button:hover {
   background-color: #ff69b4;
   color: white;
 }
+
+/* Responsive cho điện thoại */
+@media (max-width: 600px) {
+  .container {
+    width: 95%;
+    padding: 20px;
+  }
+
+  input, textarea, button {
+    font-size: 1em;
+  }
+}
