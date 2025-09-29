@@ -1,94 +1,112 @@
-// 📁 server.js
-// ================================
-// 🌸 Website Kỷ Niệm — Lưu ảnh & video bằng Node.js + Express + Multer
-// ================================
+// 📁 script.js
+// ===================================
+// 🌸 Website Kỷ Niệm — Giao diện kết nối tới server Render
+// ===================================
 
-const express = require("express");
-const multer = require("multer");
-const cors = require("cors");
-const path = require("path");
+// ⚠️ Đổi đường dẫn này thành link Render thật của bạn
+// (Ví dụ: https://kyniemdep.onrender.com)
+const API_URL = "https://kyniemdep.onrender.com";
 
-const app = express();
-
-// ⚙️ Cho phép truy cập từ mọi thiết bị (máy tính, điện thoại, tablet, v.v.)
-app.use(
-  cors({
-    origin: "*", // chấp nhận mọi domain
-    methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type"],
-  })
-);
-
-// Cho phép server hiểu JSON và hiển thị file tĩnh (HTML, CSS, JS, ảnh/video)
-app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // ảnh/video upload
-app.use(express.static(__dirname)); // ⚠️ Giúp Render hiển thị giao diện (index.html, style.css, script.js)
+// Lấy phần tử từ HTML
+const form = document.getElementById("memoryForm");
+const memoriesContainer = document.getElementById("memories");
 
 // ================================
-// 📸 Cấu hình lưu trữ file upload bằng multer
+// 📋 Hàm tải danh sách kỷ niệm
 // ================================
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/"); // thư mục lưu file
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname); // tạo tên file duy nhất
-  },
+async function loadMemories() {
+  try {
+    const res = await fetch(`${API_URL}/memories`);
+    const data = await res.json();
+    renderMemories(data);
+  } catch (error) {
+    console.error("❌ Không thể kết nối tới server:", error);
+    alert("⚠️ Server chưa chạy hoặc link chưa đúng.\nHãy kiểm tra lại API_URL trong script.js.");
+  }
+}
+
+// ================================
+// 🩷 Sự kiện khi người dùng bấm 'Thêm kỷ niệm'
+// ================================
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("title").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const file = document.getElementById("file").files[0];
+
+  if (!file) return alert("Vui lòng chọn ảnh hoặc video!");
+
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("description", description);
+  formData.append("file", file);
+
+  try {
+    const res = await fetch(`${API_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Upload thất bại");
+
+    const newMemory = await res.json();
+    addMemoryToPage(newMemory);
+    form.reset();
+  } catch (error) {
+    console.error("❌ Lỗi upload:", error);
+    alert("⚠️ Không thể tải lên. Vui lòng thử lại.");
+  }
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // giới hạn 50MB / file
-});
+// ================================
+// 🖼️ Hiển thị tất cả kỷ niệm
+// ================================
+function renderMemories(memories) {
+  memoriesContainer.innerHTML = "";
+  memories.forEach(addMemoryToPage);
+}
 
 // ================================
-// 💾 Biến lưu danh sách kỷ niệm (tạm trên RAM)
+// 🧠 Hàm thêm 1 kỷ niệm vào trang
 // ================================
-let memories = [];
+function addMemoryToPage(memory) {
+  const card = document.createElement("div");
+  card.className = "memory-card";
 
-// ================================
-// 📤 API: Upload ảnh hoặc video
-// ================================
-app.post("/upload", upload.single("file"), (req, res) => {
-  const { title, description } = req.body;
-  const file = req.file;
-
-  if (!file) {
-    return res.status(400).json({ message: "⚠️ Không có file nào được tải lên!" });
+  let mediaElement = "";
+  if (memory.fileType.startsWith("video")) {
+    mediaElement = `<video controls src="${API_URL}${memory.filePath}"></video>`;
+  } else {
+    mediaElement = `<img src="${API_URL}${memory.filePath}" alt="${memory.title}" />`;
   }
 
-  const memory = {
-    id: Date.now(),
-    title,
-    description,
-    filePath: `/uploads/${file.filename}`,
-    fileType: file.mimetype,
-  };
+  card.innerHTML = `
+    <h3>${memory.title}</h3>
+    ${mediaElement}
+    <p>${memory.description}</p>
+    <div class="actions">
+      <button onclick="deleteMemory(${memory.id})">Xoá</button>
+    </div>
+  `;
 
-  memories.push(memory);
-  console.log("✅ Đã nhận file:", memory.filePath);
-
-  res.json(memory);
-});
+  memoriesContainer.appendChild(card);
+}
 
 // ================================
-// 📋 API: Lấy danh sách kỷ niệm
+// 🗑️ Xoá kỷ niệm
 // ================================
-app.get("/memories", (req, res) => {
-  res.json(memories);
-});
+async function deleteMemory(id) {
+  try {
+    await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
+    loadMemories();
+  } catch (error) {
+    console.error("❌ Lỗi khi xoá:", error);
+    alert("Không thể xoá kỷ niệm. Vui lòng thử lại.");
+  }
+}
 
 // ================================
-// ❌ API: Xoá một kỷ niệm
+// 🚀 Tải danh sách kỷ niệm khi trang mở
 // ================================
-app.delete("/memories/:id", (req, res) => {
-  const id = parseInt(req.params.id);
-  memories = memories.filter((m) => m.id !== id);
-  res.json({ message: "🗑️ Đã xoá kỷ niệm thành công!" });
-});
-
-// ================================
-// 🚀 Khởi động server (Render sẽ tự tạo PORT)
-// ================================
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server đang chạy tại cổng ${PORT}`));
+loadMemories();
