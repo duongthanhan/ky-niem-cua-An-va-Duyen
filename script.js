@@ -1,6 +1,8 @@
 const form = document.getElementById("memoryForm");
 const memoriesContainer = document.getElementById("memories");
-let memories = [];
+let memories = JSON.parse(localStorage.getItem("memories")) || [];
+
+renderMemories();
 
 form.addEventListener("submit", function (e) {
   e.preventDefault();
@@ -8,23 +10,27 @@ form.addEventListener("submit", function (e) {
   const title = document.getElementById("title").value.trim();
   const description = document.getElementById("description").value.trim();
   const fileInput = document.getElementById("file");
-
   const file = fileInput.files[0];
   if (!file) return alert("Vui lòng chọn ảnh hoặc video!");
 
-  const objectURL = URL.createObjectURL(file);
+  const reader = new FileReader();
+  reader.onload = function (event) {
+    const fileData = event.target.result;
 
-  const memory = {
-    id: Date.now(),
-    title,
-    description,
-    fileURL: objectURL,
-    fileType: file.type
+    const memory = {
+      id: Date.now(),
+      title,
+      description,
+      fileData,
+      fileType: file.type,
+    };
+
+    memories.push(memory);
+    localStorage.setItem("memories", JSON.stringify(memories));
+    form.reset();
+    renderMemories();
   };
-
-  memories.push(memory);
-  form.reset();
-  renderMemories();
+  reader.readAsDataURL(file); // đọc file thành base64
 });
 
 function renderMemories() {
@@ -36,9 +42,9 @@ function renderMemories() {
 
     let mediaElement = "";
     if (memory.fileType.startsWith("video")) {
-      mediaElement = `<video controls src="${memory.fileURL}"></video>`;
+      mediaElement = `<video controls src="${memory.fileData}"></video>`;
     } else {
-      mediaElement = `<img src="${memory.fileURL}" alt="${memory.title}" />`;
+      mediaElement = `<img src="${memory.fileData}" alt="${memory.title}" />`;
     }
 
     card.innerHTML = `
@@ -57,6 +63,7 @@ function renderMemories() {
 
 function deleteMemory(id) {
   memories = memories.filter((m) => m.id !== id);
+  localStorage.setItem("memories", JSON.stringify(memories));
   renderMemories();
 }
 
@@ -68,6 +75,7 @@ function editMemory(id) {
   if (newTitle !== null && newDescription !== null) {
     memory.title = newTitle.trim();
     memory.description = newDescription.trim();
+    localStorage.setItem("memories", JSON.stringify(memories));
     renderMemories();
   }
 }
