@@ -2,15 +2,16 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kỷ Niệm Của Chúng Mình 💖</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="container">
     <h1>💞 Kỷ Niệm Của Chúng Mình 💞</h1>
 
-    <form id="memoryForm">
+    <!-- ⚠️ enctype giúp Safari upload được -->
+    <form id="memoryForm" enctype="multipart/form-data">
       <input type="text" id="title" placeholder="Tiêu đề" required />
       <input type="file" id="file" accept="image/*,video/*" required />
       <textarea id="description" placeholder="Mô tả kỷ niệm..." required></textarea>
