@@ -1,20 +1,22 @@
+// 🌸 Kết nối tới server Render (sử dụng HTTPS)
+const API_URL = "https://kyniemdep.onrender.com"; // ⚠️ Đổi thành domain Render của bạn nếu khác
+
 const form = document.getElementById("memoryForm");
 const memoriesContainer = document.getElementById("memories");
-const API_URL = "http://localhost:3000"; // backend server
 
-// Tải danh sách kỷ niệm khi mở trang
+// 🩷 Tải danh sách kỷ niệm khi mở trang
 async function loadMemories() {
   try {
     const res = await fetch(`${API_URL}/memories`);
     const data = await res.json();
     renderMemories(data);
   } catch (error) {
-    console.error("Không thể kết nối tới server:", error);
-    alert("⚠️ Server chưa chạy. Hãy mở terminal và chạy: node server.js");
+    console.error("❌ Không thể kết nối tới server:", error);
+    alert("⚠️ Server chưa chạy hoặc API_URL chưa đúng!");
   }
 }
 
-// Thêm kỷ niệm mới
+// 📤 Gửi kỷ niệm mới
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -35,21 +37,23 @@ form.addEventListener("submit", async (e) => {
       body: formData,
     });
 
+    if (!res.ok) throw new Error("Upload thất bại");
     const newMemory = await res.json();
     addMemoryToPage(newMemory);
     form.reset();
   } catch (error) {
-    alert("Không thể tải lên. Kiểm tra lại server.");
+    console.error("❌ Lỗi upload:", error);
+    alert("⚠️ Không thể tải lên. Vui lòng thử lại.");
   }
 });
 
-// Hiển thị danh sách
+// 🖼️ Hiển thị tất cả kỷ niệm
 function renderMemories(memories) {
   memoriesContainer.innerHTML = "";
   memories.forEach(addMemoryToPage);
 }
 
-// Thêm từng kỷ niệm vào trang
+// 🧠 Thêm một kỷ niệm vào giao diện
 function addMemoryToPage(memory) {
   const card = document.createElement("div");
   card.className = "memory-card";
@@ -73,11 +77,14 @@ function addMemoryToPage(memory) {
   memoriesContainer.appendChild(card);
 }
 
-// Xoá kỷ niệm
+// 🗑️ Xoá kỷ niệm
 async function deleteMemory(id) {
-  await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
-  loadMemories();
+  try {
+    await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
+    loadMemories();
+  } catch (error) {
+    alert("❌ Không thể xoá. Thử lại sau!");
+  }
 }
 
-// Tải danh sách khi trang mở
 loadMemories();
