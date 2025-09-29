@@ -1,112 +1,95 @@
-// 📁 script.js
-// ===================================
-// 🌸 Website Kỷ Niệm — Giao diện kết nối tới server Render
-// ===================================
+// 📁 server.js
+// ===============================================
+// 🌸 Website Kỷ Niệm — Lưu ảnh & video bằng Node.js + Express + Multer
+// ===============================================
 
-// ⚠️ Đổi đường dẫn này thành link Render thật của bạn
-// (Ví dụ: https://kyniemdep.onrender.com)
-const API_URL = "https://kyniemdep.onrender.com";
+const express = require("express");
+const multer = require("multer");
+const cors = require("cors");
+const path = require("path");
 
-// Lấy phần tử từ HTML
-const form = document.getElementById("memoryForm");
-const memoriesContainer = document.getElementById("memories");
+const app = express();
 
-// ================================
-// 📋 Hàm tải danh sách kỷ niệm
-// ================================
-async function loadMemories() {
-  try {
-    const res = await fetch(`${API_URL}/memories`);
-    const data = await res.json();
-    renderMemories(data);
-  } catch (error) {
-    console.error("❌ Không thể kết nối tới server:", error);
-    alert("⚠️ Server chưa chạy hoặc link chưa đúng.\nHãy kiểm tra lại API_URL trong script.js.");
-  }
-}
+// ⚙️ Cho phép truy cập từ mọi thiết bị (máy tính, điện thoại, tablet...)
+app.use(
+  cors({
+    origin: "*", // cho phép mọi domain truy cập
+    methods: ["GET", "POST", "DELETE"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
 
-// ================================
-// 🩷 Sự kiện khi người dùng bấm 'Thêm kỷ niệm'
-// ================================
-form.addEventListener("submit", async (e) => {
-  e.preventDefault();
+// Cho phép server đọc JSON và hiển thị file tĩnh (HTML, CSS, JS, ảnh/video)
+app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // nơi lưu ảnh/video tải lên
+app.use(express.static(__dirname)); // ⚠️ Dòng này giúp hiển thị index.html, style.css, script.js
 
-  const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const file = document.getElementById("file").files[0];
-
-  if (!file) return alert("Vui lòng chọn ảnh hoặc video!");
-
-  const formData = new FormData();
-  formData.append("title", title);
-  formData.append("description", description);
-  formData.append("file", file);
-
-  try {
-    const res = await fetch(`${API_URL}/upload`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) throw new Error("Upload thất bại");
-
-    const newMemory = await res.json();
-    addMemoryToPage(newMemory);
-    form.reset();
-  } catch (error) {
-    console.error("❌ Lỗi upload:", error);
-    alert("⚠️ Không thể tải lên. Vui lòng thử lại.");
-  }
+// ===============================================
+// 📸 Cấu hình nơi lưu file upload bằng Multer
+// ===============================================
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/"); // thư mục lưu ảnh/video
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + "-" + file.originalname); // tên file duy nhất
+  },
 });
 
-// ================================
-// 🖼️ Hiển thị tất cả kỷ niệm
-// ================================
-function renderMemories(memories) {
-  memoriesContainer.innerHTML = "";
-  memories.forEach(addMemoryToPage);
-}
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // giới hạn tối đa 50MB
+});
 
-// ================================
-// 🧠 Hàm thêm 1 kỷ niệm vào trang
-// ================================
-function addMemoryToPage(memory) {
-  const card = document.createElement("div");
-  card.className = "memory-card";
+// ===============================================
+// 💾 Bộ nhớ tạm lưu kỷ niệm (RAM)
+// ===============================================
+let memories = [];
 
-  let mediaElement = "";
-  if (memory.fileType.startsWith("video")) {
-    mediaElement = `<video controls src="${API_URL}${memory.filePath}"></video>`;
-  } else {
-    mediaElement = `<img src="${API_URL}${memory.filePath}" alt="${memory.title}" />`;
+// ===============================================
+// 📤 API: Upload ảnh hoặc video
+// ===============================================
+app.post("/upload", upload.single("file"), (req, res) => {
+  const { title, description } = req.body;
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ message: "⚠️ Không có file nào được tải lên!" });
   }
 
-  card.innerHTML = `
-    <h3>${memory.title}</h3>
-    ${mediaElement}
-    <p>${memory.description}</p>
-    <div class="actions">
-      <button onclick="deleteMemory(${memory.id})">Xoá</button>
-    </div>
-  `;
+  const memory = {
+    id: Date.now(),
+    title,
+    description,
+    filePath: `/uploads/${file.filename}`,
+    fileType: file.mimetype,
+  };
 
-  memoriesContainer.appendChild(card);
-}
+  memories.push(memory);
+  console.log(`✅ Tải lên thành công: ${file.filename}`);
 
-// ================================
-// 🗑️ Xoá kỷ niệm
-// ================================
-async function deleteMemory(id) {
-  try {
-    await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
-    loadMemories();
-  } catch (error) {
-    console.error("❌ Lỗi khi xoá:", error);
-    alert("Không thể xoá kỷ niệm. Vui lòng thử lại.");
-  }
-}
+  res.json(memory);
+});
 
-// ================================
-// 🚀 Tải danh sách kỷ niệm khi trang mở
-// ================================
-loadMemories();
+// ===============================================
+// 📋 API: Lấy danh sách kỷ niệm
+// ===============================================
+app.get("/memories", (req, res) => {
+  res.json(memories);
+});
+
+// ===============================================
+// ❌ API: Xoá 1 kỷ niệm
+// ===============================================
+app.delete("/memories/:id", (req, res) => {
+  const id = parseInt(req.params.id);
+  memories = memories.filter((m) => m.id !== id);
+  console.log(`🗑️ Đã xoá kỷ niệm có id = ${id}`);
+  res.json({ message: "Đã xoá thành công!" });
+});
+
+// ===============================================
+// 🚀 Khởi động server (Render tự gán PORT)
+// ===============================================
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server đang chạy tại cổng ${PORT}`));
