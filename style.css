@@ -1,6 +1,6 @@
 body {
   font-family: 'Segoe UI', sans-serif;
-  background-color: #ffeef5;
+  background-color: #fff0f5;
   margin: 0;
   padding: 0;
 }
@@ -8,10 +8,10 @@ body {
 .container {
   max-width: 700px;
   margin: 40px auto;
-  background-color: #fff0f5;
+  background-color: #ffffff;
   padding: 30px;
   border-radius: 12px;
-  box-shadow: 0 0 15px rgba(255, 192, 203, 0.3);
+  box-shadow: 0 0 15px rgba(255, 182, 193, 0.3);
 }
 
 h1 {
@@ -52,7 +52,6 @@ button:hover {
   border-radius: 10px;
   padding: 15px;
   margin-top: 20px;
-  position: relative;
 }
 
 .memory-card img,
@@ -64,25 +63,21 @@ button:hover {
 
 .memory-card h3 {
   color: #ff69b4;
-  margin-bottom: 5px;
 }
 
 .memory-card p {
   color: #444;
-  margin-top: 10px;
 }
 
-.memory-card .actions {
+.actions {
   margin-top: 10px;
 }
 
 .actions button {
-  margin-right: 10px;
-  padding: 5px 10px;
-  font-size: 0.9em;
+  background-color: #ffb6c1;
   border: none;
   border-radius: 6px;
-  background-color: #ffb6c1;
+  padding: 5px 10px;
   cursor: pointer;
 }
 
@@ -96,9 +91,5 @@ button:hover {
   .container {
     width: 95%;
     padding: 20px;
-  }
-
-  input, textarea, button {
-    font-size: 1em;
   }
 }
