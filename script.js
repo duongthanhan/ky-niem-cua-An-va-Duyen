@@ -1,81 +1,83 @@
 const form = document.getElementById("memoryForm");
 const memoriesContainer = document.getElementById("memories");
-let memories = JSON.parse(localStorage.getItem("memories")) || [];
+const API_URL = "http://localhost:3000"; // backend server
 
-renderMemories();
+// Tải danh sách kỷ niệm khi mở trang
+async function loadMemories() {
+  try {
+    const res = await fetch(`${API_URL}/memories`);
+    const data = await res.json();
+    renderMemories(data);
+  } catch (error) {
+    console.error("Không thể kết nối tới server:", error);
+    alert("⚠️ Server chưa chạy. Hãy mở terminal và chạy: node server.js");
+  }
+}
 
-form.addEventListener("submit", function (e) {
+// Thêm kỷ niệm mới
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const title = document.getElementById("title").value.trim();
   const description = document.getElementById("description").value.trim();
-  const fileInput = document.getElementById("file");
-  const file = fileInput.files[0];
+  const file = document.getElementById("file").files[0];
+
   if (!file) return alert("Vui lòng chọn ảnh hoặc video!");
 
-  const reader = new FileReader();
-  reader.onload = function (event) {
-    const fileData = event.target.result;
+  const formData = new FormData();
+  formData.append("title", title);
+  formData.append("description", description);
+  formData.append("file", file);
 
-    const memory = {
-      id: Date.now(),
-      title,
-      description,
-      fileData,
-      fileType: file.type,
-    };
+  try {
+    const res = await fetch(`${API_URL}/upload`, {
+      method: "POST",
+      body: formData,
+    });
 
-    memories.push(memory);
-    localStorage.setItem("memories", JSON.stringify(memories));
+    const newMemory = await res.json();
+    addMemoryToPage(newMemory);
     form.reset();
-    renderMemories();
-  };
-  reader.readAsDataURL(file); // đọc file thành base64
+  } catch (error) {
+    alert("Không thể tải lên. Kiểm tra lại server.");
+  }
 });
 
-function renderMemories() {
+// Hiển thị danh sách
+function renderMemories(memories) {
   memoriesContainer.innerHTML = "";
-
-  memories.forEach((memory) => {
-    const card = document.createElement("div");
-    card.className = "memory-card";
-
-    let mediaElement = "";
-    if (memory.fileType.startsWith("video")) {
-      mediaElement = `<video controls src="${memory.fileData}"></video>`;
-    } else {
-      mediaElement = `<img src="${memory.fileData}" alt="${memory.title}" />`;
-    }
-
-    card.innerHTML = `
-      <h3>${memory.title}</h3>
-      ${mediaElement}
-      <p>${memory.description}</p>
-      <div class="actions">
-        <button onclick="editMemory(${memory.id})">Sửa</button>
-        <button onclick="deleteMemory(${memory.id})">Xoá</button>
-      </div>
-    `;
-
-    memoriesContainer.appendChild(card);
-  });
+  memories.forEach(addMemoryToPage);
 }
 
-function deleteMemory(id) {
-  memories = memories.filter((m) => m.id !== id);
-  localStorage.setItem("memories", JSON.stringify(memories));
-  renderMemories();
-}
+// Thêm từng kỷ niệm vào trang
+function addMemoryToPage(memory) {
+  const card = document.createElement("div");
+  card.className = "memory-card";
 
-function editMemory(id) {
-  const memory = memories.find((m) => m.id === id);
-  const newTitle = prompt("Tiêu đề mới:", memory.title);
-  const newDescription = prompt("Mô tả mới:", memory.description);
-
-  if (newTitle !== null && newDescription !== null) {
-    memory.title = newTitle.trim();
-    memory.description = newDescription.trim();
-    localStorage.setItem("memories", JSON.stringify(memories));
-    renderMemories();
+  let mediaElement = "";
+  if (memory.fileType.startsWith("video")) {
+    mediaElement = `<video controls src="${API_URL}${memory.filePath}"></video>`;
+  } else {
+    mediaElement = `<img src="${API_URL}${memory.filePath}" alt="${memory.title}" />`;
   }
+
+  card.innerHTML = `
+    <h3>${memory.title}</h3>
+    ${mediaElement}
+    <p>${memory.description}</p>
+    <div class="actions">
+      <button onclick="deleteMemory(${memory.id})">Xoá</button>
+    </div>
+  `;
+
+  memoriesContainer.appendChild(card);
 }
+
+// Xoá kỷ niệm
+async function deleteMemory(id) {
+  await fetch(`${API_URL}/memories/${id}`, { method: "DELETE" });
+  loadMemories();
+}
+
+// Tải danh sách khi trang mở
+loadMemories();
