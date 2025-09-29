@@ -1,11 +1,22 @@
+// 📁 server.js
+// 🌤️ Lưu ảnh/video vĩnh viễn lên Cloudinary
+
 const express = require("express");
 const multer = require("multer");
 const cors = require("cors");
-const path = require("path");
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const cloudinary = require("cloudinary").v2;
 
 const app = express();
 
-// ⚙️ Cho phép truy cập từ mọi thiết bị (Safari, Chrome, mobile)
+// ⚙️ Cấu hình Cloudinary từ biến môi trường (Render sẽ lưu giá trị này an toàn)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// ⚙️ Cho phép truy cập từ mọi thiết bị (Safari, iPhone, Android, Chrome,...)
 app.use(
   cors({
     origin: "*",
@@ -14,46 +25,33 @@ app.use(
     credentials: true,
   })
 );
-
-// Cho phép Safari gửi yêu cầu OPTIONS trước khi POST
 app.options("*", cors());
 
-// Cho phép đọc JSON và phục vụ file tĩnh (HTML, CSS, JS, uploads)
-app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-app.use(express.static(__dirname));
-
-// 📸 Cấu hình lưu file upload
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, "uploads/");
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
+// 🌸 Cấu hình lưu file trực tiếp lên Cloudinary
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => ({
+    folder: "kyniemdep", // thư mục trên Cloudinary
+    resource_type: "auto", // tự nhận ảnh hoặc video
+    public_id: Date.now() + "-" + file.originalname,
+  }),
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
-});
+const upload = multer({ storage });
 
-// 💾 Bộ nhớ tạm (RAM)
+// Bộ nhớ tạm
 let memories = [];
 
-// 📤 Upload ảnh/video
+// 📤 Upload ảnh hoặc video
 app.post("/upload", upload.single("file"), (req, res) => {
   const { title, description } = req.body;
-  const file = req.file;
-
-  if (!file) return res.status(400).json({ message: "⚠️ Không có file!" });
 
   const memory = {
     id: Date.now(),
     title,
     description,
-    filePath: `/uploads/${file.filename}`,
-    fileType: file.mimetype,
+    fileUrl: req.file.path, // ✅ link vĩnh viễn Cloudinary
+    fileType: req.file.mimetype,
   };
 
   memories.push(memory);
@@ -65,11 +63,11 @@ app.get("/memories", (req, res) => {
   res.json(memories);
 });
 
-// 🗑️ Xoá kỷ niệm
+// ❌ Xoá kỷ niệm (trên danh sách, không xoá file Cloudinary)
 app.delete("/memories/:id", (req, res) => {
   const id = parseInt(req.params.id);
   memories = memories.filter((m) => m.id !== id);
-  res.json({ message: "🗑️ Đã xoá!" });
+  res.json({ message: "🗑️ Đã xoá kỷ niệm!" });
 });
 
 // 🚀 Khởi động server
