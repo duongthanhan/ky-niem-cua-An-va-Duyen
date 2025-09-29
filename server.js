@@ -1,8 +1,3 @@
-// 📁 server.js
-// ===============================================
-// 🌸 Website Kỷ Niệm — Lưu ảnh & video bằng Node.js + Express + Multer
-// ===============================================
-
 const express = require("express");
 const multer = require("multer");
 const cors = require("cors");
@@ -10,52 +5,48 @@ const path = require("path");
 
 const app = express();
 
-// ⚙️ Cho phép truy cập từ mọi thiết bị (máy tính, điện thoại, tablet...)
+// ⚙️ Cho phép truy cập từ mọi thiết bị (Safari, Chrome, mobile)
 app.use(
   cors({
-    origin: "*", // cho phép mọi domain truy cập
-    methods: ["GET", "POST", "DELETE"],
-    allowedHeaders: ["Content-Type"],
+    origin: "*",
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Accept"],
+    credentials: true,
   })
 );
 
-// Cho phép server đọc JSON và hiển thị file tĩnh (HTML, CSS, JS, ảnh/video)
-app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // nơi lưu ảnh/video tải lên
-app.use(express.static(__dirname)); // ⚠️ Dòng này giúp hiển thị index.html, style.css, script.js
+// Cho phép Safari gửi yêu cầu OPTIONS trước khi POST
+app.options("*", cors());
 
-// ===============================================
-// 📸 Cấu hình nơi lưu file upload bằng Multer
-// ===============================================
+// Cho phép đọc JSON và phục vụ file tĩnh (HTML, CSS, JS, uploads)
+app.use(express.json());
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use(express.static(__dirname));
+
+// 📸 Cấu hình lưu file upload
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/"); // thư mục lưu ảnh/video
+    cb(null, "uploads/");
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + "-" + file.originalname); // tên file duy nhất
+    cb(null, Date.now() + "-" + file.originalname);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // giới hạn tối đa 50MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
-// ===============================================
-// 💾 Bộ nhớ tạm lưu kỷ niệm (RAM)
-// ===============================================
+// 💾 Bộ nhớ tạm (RAM)
 let memories = [];
 
-// ===============================================
-// 📤 API: Upload ảnh hoặc video
-// ===============================================
+// 📤 Upload ảnh/video
 app.post("/upload", upload.single("file"), (req, res) => {
   const { title, description } = req.body;
   const file = req.file;
 
-  if (!file) {
-    return res.status(400).json({ message: "⚠️ Không có file nào được tải lên!" });
-  }
+  if (!file) return res.status(400).json({ message: "⚠️ Không có file!" });
 
   const memory = {
     id: Date.now(),
@@ -66,30 +57,21 @@ app.post("/upload", upload.single("file"), (req, res) => {
   };
 
   memories.push(memory);
-  console.log(`✅ Tải lên thành công: ${file.filename}`);
-
   res.json(memory);
 });
 
-// ===============================================
-// 📋 API: Lấy danh sách kỷ niệm
-// ===============================================
+// 📋 Lấy danh sách kỷ niệm
 app.get("/memories", (req, res) => {
   res.json(memories);
 });
 
-// ===============================================
-// ❌ API: Xoá 1 kỷ niệm
-// ===============================================
+// 🗑️ Xoá kỷ niệm
 app.delete("/memories/:id", (req, res) => {
   const id = parseInt(req.params.id);
   memories = memories.filter((m) => m.id !== id);
-  console.log(`🗑️ Đã xoá kỷ niệm có id = ${id}`);
-  res.json({ message: "Đã xoá thành công!" });
+  res.json({ message: "🗑️ Đã xoá!" });
 });
 
-// ===============================================
-// 🚀 Khởi động server (Render tự gán PORT)
-// ===============================================
+// 🚀 Khởi động server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server đang chạy tại cổng ${PORT}`));
